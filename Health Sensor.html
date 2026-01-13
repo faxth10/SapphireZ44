@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Complete Version</title>
+  <title>Health Sensor App - Fixed</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -98,8 +98,8 @@
     let user = {}, round = 0, allRounds = [], isMeasuring = false;
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer;
+    let currentRoundMax = 0; // ย้ายตัวแปรเก็บค่าสูงสุดมาไว้ข้างนอกเพื่อความชัวร์
 
-    // ขออนุญาตไมค์ครั้งเดียว
     async function initMicAndNextPage() {
         const n = document.getElementById('name').value;
         const a = document.getElementById('age').value;
@@ -112,12 +112,14 @@
             document.getElementById('page1').classList.add('hidden');
             document.getElementById('page2').classList.remove('hidden');
         } catch (e) {
-            alert('แอปจำเป็นต้องใช้ไมโครโฟนเพื่อวัดแรงลม กรุณากดยอมรับการเข้าถึง');
+            alert('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์');
         }
     }
 
-    function startTestRound() {
+    async function startTestRound() {
         if (round >= 5) return;
+        
+        // บัคหลัก: AudioContext ต้อง Resume หรือสร้างใหม่เมื่อมีการคลิก
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
@@ -127,14 +129,18 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             microphone.connect(analyser);
         }
+        
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
 
         round++;
+        currentRoundMax = 0; // Reset ค่าสูงสุดสำหรับรอบใหม่
         document.getElementById('roundNo').textContent = round;
         document.getElementById('startBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
         
         isMeasuring = true;
-        window.currentMax = 0;
         runLoop();
     }
 
@@ -146,21 +152,26 @@
 
         function draw() {
             if (!isMeasuring) return;
+            
             analyser.getByteFrequencyData(dataArray);
             let avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            let pefr = Math.min(800, avg * 8.2); 
+            
+            // สูตรคำนวณปรับให้ตัวเลขเสถียรขึ้น
+            let pefr = Math.min(800, avg * 8.5); 
 
-            if (pefr > window.currentMax) window.currentMax = pefr;
+            if (pefr > currentRoundMax) currentRoundMax = pefr;
 
-            // Auto-stop เมื่อเงียบ
+            // Auto-stop: ถ้าเป่าแรงถึงระดับหนึ่งแล้วเงียบไป 1.7 วินาที
             if (pefr > 40) {
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(stopTestRound, 1700);
             }
 
+            // แสดงผล UI
             document.getElementById('val-num').textContent = Math.round(pefr);
+            
+            // จัดการ Zones
             document.querySelectorAll('.zone-card').forEach(c => c.classList.remove('active'));
-
             if (pefr > 450) {
                 statusDisplay.className = "status-high"; statusText.textContent = "แรงเกินไป!";
                 document.getElementById('z-high').classList.add('active');
@@ -170,8 +181,11 @@
             } else if (pefr > 40) {
                 statusDisplay.className = "status-low"; statusText.textContent = "เบาเกินไป";
                 document.getElementById('z-low').classList.add('active');
+            } else {
+                statusDisplay.className = "status-idle"; statusText.textContent = "เริ่มเป่าได้เลย...";
             }
 
+            // วาดกราฟ
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = pefr > 450 ? '#f44336' : (pefr >= 350 ? '#4caf50' : '#fbc02d');
             ctx.fillRect(0, canvas.height, canvas.width, -(pefr/800 * canvas.height));
@@ -182,35 +196,50 @@
     }
 
     function stopTestRound() {
+        if (!isMeasuring) return;
+        
         isMeasuring = false;
         clearTimeout(silenceTimer);
         cancelAnimationFrame(animationId);
         
-        allRounds.push(window.currentMax);
+        allRounds.push(currentRoundMax);
+        
         document.getElementById('startBtn').classList.remove('hidden');
         document.getElementById('stopBtn').classList.add('hidden');
         document.getElementById('status-display').className = "status-idle";
         document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " สำเร็จ ✅";
 
-        if (round >= 5) setTimeout(showFinal, 1000);
+        if (round >= 5) {
+            setTimeout(showFinal, 800);
+        }
     }
 
     function showFinal() {
         document.getElementById('page2').classList.add('hidden');
         document.getElementById('page3').classList.remove('hidden');
-        const avg = allRounds.reduce((a, b) => a + b, 0) / 5;
+        
+        const avg = allRounds.reduce((a, b) => a + b, 0) / allRounds.length;
         
         document.getElementById('summary-data').innerHTML = `
-            <b>ผู้ทดสอบ:</b> ${user.name}<br><b>อายุ:</b> ${user.age} | <b>เพศ:</b> ${user.gender}<br><hr>
+            <b>ผู้ทดสอบ:</b> ${user.name}<br>
+            <b>อายุ:</b> ${user.age} ปี | <b>เพศ:</b> ${user.gender}<br><hr>
             ${allRounds.map((v, i) => `รอบการเป่าที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
         `;
         document.getElementById('final-avg').textContent = Math.round(avg) + " L/min";
         
         const card = document.getElementById('final-card');
         const st = document.getElementById('final-status');
-        if(avg >= 400) { st.textContent = "เกณฑ์: ดีมาก 🌟"; card.style.background = "#dcfce7"; card.style.color = "#15803d"; }
-        else if(avg >= 300) { st.textContent = "เกณฑ์: ปกติ ✅"; card.style.background = "#fef3c7"; card.style.color = "#b45309"; }
-        else { st.textContent = "เกณฑ์: ควรปรับปรุง ⚠️"; card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; }
+        
+        if(avg >= 400) { 
+            st.textContent = "เกณฑ์: ดีมาก 🌟"; 
+            card.style.background = "#dcfce7"; card.style.color = "#15803d"; 
+        } else if(avg >= 300) { 
+            st.textContent = "เกณฑ์: ปกติ ✅"; 
+            card.style.background = "#fef3c7"; card.style.color = "#b45309"; 
+        } else { 
+            st.textContent = "เกณฑ์: ควรปรับปรุง ⚠️"; 
+            card.style.background = "#fee2e2"; card.style.color = "#b91c1c"; 
+        }
     }
 </script>
 </body>

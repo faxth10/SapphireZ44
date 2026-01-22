@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Corrected Version</title>
+  <title>Health Sensor App - Real-time Colors</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -14,30 +14,32 @@
       --bg: #f5f7fa;
     }
     body { font-family: "Kanit", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
-    .container { max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    .container { max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.3s; }
+    
+    /* สถานะสีในหน้าเป่า */
+    .bg-normal { background: #fff; }
+    .bg-green { background: #dcfce7 !important; }
+    .bg-yellow { background: #fef3c7 !important; }
+    .bg-red { background: #fee2e2 !important; }
+
     h1 { text-align: center; color: var(--primary); font-size: 22px; margin-bottom: 5px; }
     .sub-title { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 25px; }
-    .round-tag { background: #e0f2fe; color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
+    .round-tag { background: rgba(25, 118, 210, 0.1); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; display: inline-block; margin-bottom: 15px; }
     
-    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; transition: 0.3s; }
-    .status-idle { background: #f8fafc; color: #64748b; border: 2px dashed #e2e8f0; }
-    .status-low { background: #fff9c4; color: #b45309; border: 2px solid #fef3c7; }
-    .status-good { background: #f0fdf4; color: #15803d; border: 2px solid #dcfce7; }
-    .status-high { background: #fef2f2; color: #b91c1c; border: 2px solid #fee2e2; }
-
-    .value-display { font-size: 56px; font-weight: 700; line-height: 1; margin: 10px 0; }
-    .timer-display { font-size: 16px; font-weight: 500; color: #64748b; margin-top: 5px; }
-    canvas { width: 100%; height: 100px; border-radius: 15px; background: #fdfdfd; margin: 15px 0; }
+    #status-display { padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
+    .value-display { font-size: 64px; font-weight: 700; line-height: 1; margin: 10px 0; }
+    .timer-display { font-size: 18px; font-weight: 500; color: #475569; margin-top: 5px; }
+    canvas { width: 100%; height: 80px; border-radius: 15px; background: rgba(255,255,255,0.5); margin: 15px 0; border: 1px solid rgba(0,0,0,0.05); }
 
     button { width: 100%; padding: 15px; border-radius: 15px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
     .btn-start { background: var(--primary); color: white; }
     .btn-stop { background: var(--danger); color: white; }
-    .btn-outline { background: #f1f5f9; color: #64748b; }
+    .btn-outline { background: rgba(0,0,0,0.05); color: #64748b; }
     
     .input-group { margin-bottom: 15px; text-align: left; }
-    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; }
+    input, select { width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-family: 'Kanit'; font-size: 16px; }
     .hidden { display: none; }
-    hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+    hr { border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 15px 0; }
   </style>
 </head>
 <body>
@@ -48,28 +50,28 @@
     <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
     <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" value="15"></div>
-        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" value="165"></div>
+        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" placeholder="เช่น 15"></div>
+        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" placeholder="เช่น 165"></div>
     </div>
     <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
     <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
 </div>
 
-<div class="container hidden" id="page2" style="text-align: center;">
+<div class="container" id="page2" style="text-align: center; display: none;">
     <div class="round-tag">รอบที่ <span id="roundNo">1</span> / 5</div>
-    <div id="status-display" class="status-idle">
-        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมสำหรับการทดสอบ</div>
+    <div id="status-display">
+        <div id="status-text" style="font-size: 18px; font-weight: 600;">พร้อมเป่า...</div>
         <div class="value-display"><span id="val-num">0</span> <span style="font-size:16px">L/min</span></div>
         <div class="timer-display">⏱ เวลาเป่า: <span id="current-timer">0.00</span> วินาที</div>
     </div>
     <canvas id="graphCanvas"></canvas>
-    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่ารอบนี้</button>
+    <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่า</button>
     <button id="stopBtn" class="btn-stop hidden" onclick="stopTestRound()">⏹️ หยุดการวัด</button>
 </div>
 
 <div class="container hidden" id="page3" style="text-align: center;">
     <h1>📊 สรุปรายงานการตรวจ</h1>
-    <div id="summary-data" style="background:#f8fafc; padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
+    <div id="summary-data" style="background:rgba(0,0,0,0.02); padding:20px; border-radius:20px; margin:20px 0; text-align:left; font-size: 15px;"></div>
     
     <div id="final-card" style="padding:25px; border-radius:20px; margin-bottom:20px; border: 1px solid #eee;">
         <div style="font-size: 14px; opacity: 0.8;">ความแรงเฉลี่ย: <span id="final-avg-val">0</span> L/min</div>
@@ -78,7 +80,7 @@
     </div>
 
     <button class="btn-start" onclick="window.print()">💾 พิมพ์รายงาน (PDF)</button>
-    <button class="btn-outline" onclick="location.reload()">🔄 เริ่มทดสอบใหม่</button>
+    <button class="btn-outline" onclick="location.reload()">🔄 เริ่มใหม่</button>
 </div>
 
 <script>
@@ -86,11 +88,10 @@
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0;
 
-    // แก้ไขสูตรใหม่ ป้องกันค่าติดลบ
     function getPredictedPEFR(age, height, gender) {
         let base = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 50);
         let result = base - (age * 0.5); 
-        return Math.max(200, Math.round(result)); // ให้ค่าต่ำสุดไม่น้อยกว่า 200 L/min
+        return Math.max(200, Math.round(result));
     }
 
     async function initMicAndNextPage() {
@@ -103,8 +104,8 @@
             globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             user = { name: n, age: parseInt(a), height: parseInt(h), gender: g };
             user.predicted = getPredictedPEFR(user.age, user.height, user.gender);
-            document.getElementById('page1').classList.add('hidden');
-            document.getElementById('page2').classList.remove('hidden');
+            document.getElementById('page1').style.display = 'none';
+            document.getElementById('page2').style.display = 'block';
         } catch (e) { alert('กรุณายอมรับการเข้าถึงไมโครโฟน'); }
     }
 
@@ -124,6 +125,7 @@
         document.getElementById('roundNo').textContent = round;
         document.getElementById('startBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
+        document.getElementById('page2').className = "container bg-normal";
         isMeasuring = true;
         runLoop();
     }
@@ -131,7 +133,7 @@
     function runLoop() {
         const canvas = document.getElementById('graphCanvas');
         const ctx = canvas.getContext('2d');
-        const statusDisplay = document.getElementById('status-display');
+        const pageContainer = document.getElementById('page2');
         const statusText = document.getElementById('status-text');
 
         function draw() {
@@ -145,13 +147,27 @@
                 roundDuration = (Date.now() - startTime) / 1000;
                 document.getElementById('current-timer').textContent = roundDuration.toFixed(2);
                 if (pefr > currentRoundMax) currentRoundMax = pefr;
+                
+                // Real-time Color Logic
+                let currentRatio = (pefr / user.predicted) * 100;
+                if (currentRatio >= 55) {
+                    pageContainer.className = "container bg-green";
+                    statusText.textContent = "เยี่ยมมาก (ปกติ) ✅";
+                } else if (currentRatio >= 35) {
+                    pageContainer.className = "container bg-yellow";
+                    statusText.textContent = "เฝ้าระวัง ⚠️";
+                } else {
+                    pageContainer.className = "container bg-red";
+                    statusText.textContent = "เบาเกินไป ❌";
+                }
+
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(stopTestRound, 1500);
             }
 
             document.getElementById('val-num').textContent = Math.round(pefr);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#1976d2';
+            ctx.fillStyle = 'rgba(25, 118, 210, 0.8)';
             ctx.fillRect(0, canvas.height, canvas.width, -(pefr/800 * canvas.height));
             animationId = requestAnimationFrame(draw);
         }
@@ -166,11 +182,13 @@
         allDurations.push(roundDuration);
         document.getElementById('startBtn').classList.remove('hidden');
         document.getElementById('stopBtn').classList.add('hidden');
+        document.getElementById('page2').className = "container bg-normal";
+        document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " สำเร็จ";
         if (round >= 5) setTimeout(showFinal, 800);
     }
 
     function showFinal() {
-        document.getElementById('page2').classList.add('hidden');
+        document.getElementById('page2').style.display = 'none';
         document.getElementById('page3').classList.remove('hidden');
         const avgPefr = allRounds.reduce((a, b) => a + b, 0) / allRounds.length;
         const avgDur = allDurations.reduce((a, b) => a + b, 0) / allDurations.length;
@@ -178,9 +196,9 @@
 
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>ค่ามาตรฐานเป้าหมาย:</b> ${user.predicted} L/min<br>
-            <b>ประสิทธิภาพที่ทำได้:</b> ${ratio.toFixed(1)}%<br><hr>
-            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
+            <b>ค่ามาตรฐาน:</b> ${user.predicted} L/min<br>
+            <b>เฉลี่ยที่ทำได้:</b> ${ratio.toFixed(1)}% ของค่ามาตรฐาน<br><hr>
+            ${allRounds.map((v, i) => `รอบ ${i+1}: <b>${Math.round(v)}</b> L/min (${allDurations[i].toFixed(2)} วินาที)`).join('<br>')}
         `;
 
         document.getElementById('final-avg-val').textContent = Math.round(avgPefr);
@@ -189,7 +207,6 @@
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
 
-        // เกณฑ์เปอร์เซ็นต์ตามที่คุณระบุ
         if (ratio >= 55) {
             st.textContent = "ปกติ (Green Zone) 🟢";
             card.style.background = "#dcfce7"; card.style.color = "#15803d";

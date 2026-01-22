@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Health Sensor App - Professional Logic</title>
+  <title>Health Sensor App - Corrected Version</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -48,8 +48,8 @@
     <div class="sub-title">ชมรมนักประดิษฐ์ โรงเรียนโนนสะอาดพิทยาสรรค์</div>
     <div class="input-group"><label>ชื่อผู้ใช้งาน</label><input id="name" type="text" placeholder="ระบุชื่อ"></div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number"></div>
-        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number"></div>
+        <div class="input-group"><label>อายุ (ปี)</label><input id="age" type="number" value="15"></div>
+        <div class="input-group"><label>ส่วนสูง (ซม.)</label><input id="height" type="number" value="165"></div>
     </div>
     <div class="input-group"><label>เพศ</label><select id="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
     <button class="btn-start" onclick="initMicAndNextPage()">เข้าสู่การทดสอบ 🚀</button>
@@ -65,7 +65,6 @@
     <canvas id="graphCanvas"></canvas>
     <button id="startBtn" class="btn-start" onclick="startTestRound()">▶️ เริ่มเป่ารอบนี้</button>
     <button id="stopBtn" class="btn-stop hidden" onclick="stopTestRound()">⏹️ หยุดการวัด</button>
-    <button class="btn-outline" style="font-size: 14px;" onclick="location.reload()">🔙 กลับหน้าหลัก</button>
 </div>
 
 <div class="container hidden" id="page3" style="text-align: center;">
@@ -87,12 +86,11 @@
     let audioContext, analyser, microphone, dataArray, animationId, globalStream;
     let silenceTimer, currentRoundMax = 0, startTime = 0, roundDuration = 0;
 
+    // แก้ไขสูตรใหม่ ป้องกันค่าติดลบ
     function getPredictedPEFR(age, height, gender) {
-        if (gender === 'ชาย') {
-            return Math.round(((height / 100) * 5.48) + (age * 0.03) - 0.42 * 60);
-        } else {
-            return Math.round(((height / 100) * 3.72) + (age * 0.03) - 0.42 * 60);
-        }
+        let base = (gender === 'ชาย') ? ((height - 100) * 5 + 100) : ((height - 100) * 4 + 50);
+        let result = base - (age * 0.5); 
+        return Math.max(200, Math.round(result)); // ให้ค่าต่ำสุดไม่น้อยกว่า 200 L/min
     }
 
     async function initMicAndNextPage() {
@@ -117,7 +115,6 @@
             analyser = audioContext.createAnalyser();
             microphone = audioContext.createMediaStreamSource(globalStream);
             analyser.fftSize = 512;
-            analyser.smoothingTimeConstant = 0.8;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             microphone.connect(analyser);
         }
@@ -127,7 +124,6 @@
         document.getElementById('roundNo').textContent = round;
         document.getElementById('startBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
-        document.getElementById('current-timer').textContent = "0.00";
         isMeasuring = true;
         runLoop();
     }
@@ -154,9 +150,6 @@
             }
 
             document.getElementById('val-num').textContent = Math.round(pefr);
-            if (pefr > 400) { statusDisplay.className = "status-good"; statusText.textContent = "เป่าแรงสม่ำเสมอ!"; }
-            else if (pefr > 40) { statusDisplay.className = "status-low"; statusText.textContent = "เป่าต่อไป..."; }
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#1976d2';
             ctx.fillRect(0, canvas.height, canvas.width, -(pefr/800 * canvas.height));
@@ -173,8 +166,6 @@
         allDurations.push(roundDuration);
         document.getElementById('startBtn').classList.remove('hidden');
         document.getElementById('stopBtn').classList.add('hidden');
-        document.getElementById('status-display').className = "status-idle";
-        document.getElementById('status-text').textContent = "บันทึกรอบที่ " + round + " แล้ว";
         if (round >= 5) setTimeout(showFinal, 800);
     }
 
@@ -183,12 +174,13 @@
         document.getElementById('page3').classList.remove('hidden');
         const avgPefr = allRounds.reduce((a, b) => a + b, 0) / allRounds.length;
         const avgDur = allDurations.reduce((a, b) => a + b, 0) / allDurations.length;
-        const ratio = (avgPefr / user.predicted) * 100; // คิดเป็นเปอร์เซ็นต์
+        const ratio = (avgPefr / user.predicted) * 100;
 
         document.getElementById('summary-data').innerHTML = `
             <b>ผู้ทดสอบ:</b> ${user.name}<br>
-            <b>เป้าหมายมาตรฐาน:</b> ${user.predicted} L/min<br><hr>
-            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min (เวลา ${allDurations[i].toFixed(2)} วินาที)`).join('<br>')}
+            <b>ค่ามาตรฐานเป้าหมาย:</b> ${user.predicted} L/min<br>
+            <b>ประสิทธิภาพที่ทำได้:</b> ${ratio.toFixed(1)}%<br><hr>
+            ${allRounds.map((v, i) => `ครั้งที่ ${i+1}: <b>${Math.round(v)}</b> L/min`).join('<br>')}
         `;
 
         document.getElementById('final-avg-val').textContent = Math.round(avgPefr);
@@ -197,7 +189,7 @@
         const st = document.getElementById('final-status');
         const card = document.getElementById('final-card');
 
-        // Logic ตามที่คุณกำหนด: แดง 0-30, เหลือง 35-50, เขียว 55 ขึ้นไป
+        // เกณฑ์เปอร์เซ็นต์ตามที่คุณระบุ
         if (ratio >= 55) {
             st.textContent = "ปกติ (Green Zone) 🟢";
             card.style.background = "#dcfce7"; card.style.color = "#15803d";
